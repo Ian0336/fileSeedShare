@@ -32,17 +32,19 @@ export default function Home() {
     const formData = new FormData();
     formData.append('seed_code', seedCode);
     formData.append('metadata', metadata);
+    formData.append('upload_type', uploadType);
 
     if (uploadType === 'file' && file) {
-      console.log(file); 
       formData.append('file', file);
     } else if (uploadType === 'text' && textMessage) {
       formData.append('text_message', textMessage);
     } else {
-      setResult('請選擇檔案或輸入文字訊息');
+      setResult('Invalid input');
       return;
     }
-
+    formData.forEach((value, key) => {
+      console.log(`${key}: ${value}`);
+    });
     try {
       const response = await fetch('http://localhost:5001/upload', {
         method: 'POST',

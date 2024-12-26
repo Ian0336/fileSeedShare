@@ -3,6 +3,7 @@ const multer = require('multer');
 const { Pool } = require('pg');
 const path = require('path');
 const fs = require('fs');
+const cors = require('cors');
 
 const app = express();
 
@@ -28,20 +29,56 @@ const storage = multer.diskStorage({
   },
 });
 
-const upload = multer({ storage });
+const upload = multer({ storage, fileFilter: (req, file, cb) => {
+  // req.body.upload_type === 'file' ? cb(null, true) : cb(null, false);
+  console.log('upload_type:', req.body.upload_type);
+  if (req.body.upload_type === 'file') {
+    cb(null, true);
+  } else {
+    cb(null, false);
+  }
+}
+});
 
 // 中間件設定
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cors({
+  origin: 'http://localhost:3000', // 允許的來源
+  methods: ['GET', 'POST', 'PUT', 'DELETE'], // 允許的 HTTP 方法
+  credentials: true // 如果需要發送 Cookie，設置為 true
+}));
 
+// async (req, res, next) => {
+//   const { upload_type } = req.body;
+//   for (const key in req.body) {
+//     console.log(key, req.body[key]);
+//   }
+//   console.log('upload_type:', req.body.upload_type);
+//   if (upload_type === 'file') {
+//     return upload.single('file')(req, res, next);
+//   }
+
+//   next();
+// }
 // 檔案上傳路由
 app.post('/upload', upload.single('file'), async (req, res) => {
-  const { seed_code, metadata } = req.body;
-  const file = req.file;
-
-  if (!seed_code || !file) {
-    return res.status(400).json({ error: 'Seed code and file are required' });
+  const { seed_code, metadata, upload_type, text_message } = req.body;
+  for (const key in req.body) {
+    console.log(key, req.body[key]);
   }
+  const file = req.file;
+  console.log(upload_type);
+  if (upload_type === 'text' && !text_message) {
+    return res.status(400).json({ error: 'Text message is required' });
+  }else if(upload_type === 'file' && !file) {
+    return res.status(400).json({ error: 'File is required' });
+  }else if (upload_type !== 'text' && upload_type !== 'file') {
+    return res.status(400).json({ error: 'Invalid upload type' });
+  }
+  
+
+
 
   try {
     // 檢查種子碼是否已存在
@@ -53,7 +90,7 @@ app.post('/upload', upload.single('file'), async (req, res) => {
     // 儲存檔案資訊到資料庫
     const result = await pool.query(
       'INSERT INTO files (seed_code, file_path, metadata) VALUES ($1, $2, $3) RETURNING *',
-      [seed_code, file.path, metadata ? JSON.parse(metadata) : {}]
+      [seed_code, upload_type=='text'?text_message:file.path, metadata ? JSON.parse(metadata) : {}]
     );
 
     res.status(201).json({
@@ -81,10 +118,13 @@ app.get('/download/:seed_code', async (req, res) => {
 
     // 檢查檔案是否存在
     if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ error: 'File Not Found' });
+      // return res.status(404).json({ error: 'File Not Found' });
+      return res.status(200).json({ message: filePath });
     }
 
-    res.download(filePath);
+    // res.download(filePath);
+    // return name of file
+    res.status(200).json({ file: filePath });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
