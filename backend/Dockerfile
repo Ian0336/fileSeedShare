@@ -16,4 +16,4 @@ COPY . .
 EXPOSE 5001
 
 # 啟動後端伺服器
-CMD ["node", "server.js"]
+CMD ["npm", "run", "dev"]
