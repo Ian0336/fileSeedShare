@@ -57,19 +57,21 @@ function SearchTab() {
   return (
     <div className="space-y-4">
       <h2 className="text-lg font-medium text-gray-700">Search</h2>
-      <input
-        type="text"
-        value={seedCode}
-        onChange={(e) => setSeedCode(e.target.value)}
-        className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        placeholder="Enter Seed Code"
-      />
-      <button
-        onClick={handleSearch}
-        className="w-full py-2 rounded-lg font-medium text-white bg-gray-500 hover:bg-gray-600 transition duration-200"
-      >
-        Go to Seed Page
-      </button>
+      <form onSubmit={(e) => { e.preventDefault(); handleSearch(); }} className="space-y-4">
+        <input
+          type="text"
+          value={seedCode}
+          onChange={(e) => setSeedCode(e.target.value)}
+          className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Enter Seed Code"
+        />
+        <button
+          type="submit"
+          className="w-full py-2 rounded-lg font-medium text-white bg-gray-500 hover:bg-gray-600 transition duration-200"
+        >
+          Go to Seed Page
+        </button>
+      </form>
     </div>
   );
 }

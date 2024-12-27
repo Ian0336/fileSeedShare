@@ -21,7 +21,7 @@ export default function Home({ params }: { params: { seed: string } }) {
   React.useEffect(() => {
     const resolveParams = async () => {
       const resolvedParams = await params;
-      setSeed(resolvedParams.seed);
+      setSeed(decodeURIComponent(resolvedParams.seed));
     };
 
     resolveParams();
@@ -35,10 +35,13 @@ export default function Home({ params }: { params: { seed: string } }) {
           let data_type = data['file'] ? 'file' : 'text';
           let data_content = '';
           if (data_type === 'file') {
-            data_content = data['file'];
-            data_content = data_content.split('uploads/')[1];
+            let file_name = data.file.split('uploads/')[1];
+            console.log('file_name:', file_name);
+            let index = file_name.indexOf('-');
+            file_name = file_name.substring(index + 1);
+            data_content = `<a className="font-medium text-black" href=http://localhost:5001/download/${seed}>${file_name}</a>`;
           } else {
-            data_content = data['text'];
+            data_content = `<button className="font-medium text-black bg-transparent border-none cursor-pointer" onclick="navigator.clipboard.writeText('${data.text}').then(() => alert('Copied!')).catch(() => alert('Failed to copy.'))">${data.text}</button>`;
           }
 
           setData({ type: data_type, content: data_content });
@@ -67,8 +70,8 @@ export default function Home({ params }: { params: { seed: string } }) {
     <div className="flex flex-col items-center min-h-screen px-8 py-12 font-sans mt-7">
       <div className="w-full max-w-lg bg-white shadow-lg rounded-lg p-8 relative">
         <button
-          onClick={() => router.push('/')}
-          className="absolute top-4 left-4 text-gray-500 hover:text-gray-700"
+          onClick={() => router.back()}
+          className="absolute top-4 left-4 text-gray-500 hover:text-gray-700 cursor-pointer focus:outline-none"
           aria-label="Go Back"
         >
           ← Back
@@ -77,19 +80,11 @@ export default function Home({ params }: { params: { seed: string } }) {
         <div className="space-y-4">
           <p className="text-gray-700">Your Seed: <span className="font-medium text-black">{seed}</span></p>
           {data ? (
-            <p className="text-gray-700">Data: <span className="font-medium text-black">{data.content}</span></p>
+            <p className="text-gray-700">Data: <span dangerouslySetInnerHTML={{ __html: data.content }} /></p>
           ) : error ? (
             <p className="text-red-500">Error: {error}</p>
           ) : (
             <p className="text-gray-500">Loading...</p>
-          )}
-          {data && data.type === 'file' && (
-            <a
-              href={`http://localhost:5001/download/${seed}`}
-              className="text-gray-700 hover:underline"
-            >
-              Download File
-            </a>
           )}
           <button
             onClick={copyToClipboard}
