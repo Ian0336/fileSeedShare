@@ -1,4 +1,3 @@
-version: '3.8'
 services:
   frontend:
     build:
@@ -6,9 +5,9 @@ services:
       dockerfile: Dockerfile
     ports:
       - "3000:3000"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
+    # volumes:
+    #   - ./frontend:/app
+    #   - /app/node_modules
     environment:
       - CHOKIDAR_USEPOLLING=true
       - NEXT_PUBLIC_API_URL=http://localhost:5001
@@ -22,12 +21,30 @@ services:
     ports:
       - "5001:5001"
     volumes:
-      - ./backend:/app
-      - /app/node_modules
+      # - ./backend:/app
+      # - /app/node_modules
+      - shared_data:/app/uploads
     environment:
       - DATABASE_URL=postgres://user:password@db:5432/fileseedshare
     depends_on:
       - db
+
+  cleaner:
+    build:
+      context: ./cleaner
+      dockerfile: Dockerfile
+    environment:
+      DB_NAME: fileseedshare
+      DB_USER: user
+      DB_PASSWORD: password
+      DB_HOST: db
+      DB_PORT: 5432
+    depends_on:
+      - db
+    volumes:
+      - shared_data:/app/uploads
+      - ./log:/var/log
+
 
   db:
     image: postgres:15
@@ -44,3 +61,4 @@ services:
 
 volumes:
   db_data:
+  shared_data:

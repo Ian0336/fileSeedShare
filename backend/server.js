@@ -31,7 +31,6 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage, fileFilter: (req, file, cb) => {
   // req.body.upload_type === 'file' ? cb(null, true) : cb(null, false);
-  console.log('upload_type:', req.body.upload_type);
   if (req.body.upload_type === 'file') {
     cb(null, true);
   } else {
@@ -72,10 +71,8 @@ app.use(cors({
 app.post('/upload', upload.single('file'), async (req, res) => {
   const { seed_code, metadata, upload_type, text_message } = req.body;
   for (const key in req.body) {
-    console.log(key, req.body[key]);
   }
   const file = req.file;
-  console.log(upload_type);
   if (upload_type === 'text' && !text_message) {
     return res.status(400).json({ error: 'Text message is required' });
   }else if(upload_type === 'file' && !file) {
