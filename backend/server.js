@@ -37,6 +37,13 @@ const upload = multer({ storage, fileFilter: (req, file, cb) => {
   } else {
     cb(null, false);
   }
+
+  // set file size limit
+  if (file.size > 1024 * 1024) {
+    cb(null, false);
+  } else {
+    cb(null, true);
+  } 
 }
 });
 
@@ -72,13 +79,10 @@ app.post('/upload', upload.single('file'), async (req, res) => {
   if (upload_type === 'text' && !text_message) {
     return res.status(400).json({ error: 'Text message is required' });
   }else if(upload_type === 'file' && !file) {
-    return res.status(400).json({ error: 'File is required' });
+    return res.status(400).json({ error: 'File is required and file size should be less than 1MB' });
   }else if (upload_type !== 'text' && upload_type !== 'file') {
     return res.status(400).json({ error: 'Invalid upload type' });
   }
-  
-
-
 
   try {
     // 檢查種子碼是否已存在
@@ -104,7 +108,7 @@ app.post('/upload', upload.single('file'), async (req, res) => {
 });
 
 // 檔案下載路由
-app.get('/download/:seed_code', async (req, res) => {
+app.get('/file-name/:seed_code', async (req, res) => {
   const { seed_code } = req.params;
 
   try {
@@ -119,7 +123,7 @@ app.get('/download/:seed_code', async (req, res) => {
     // 檢查檔案是否存在
     if (!fs.existsSync(filePath)) {
       // return res.status(404).json({ error: 'File Not Found' });
-      return res.status(200).json({ message: filePath });
+      return res.status(200).json({ text: filePath });
     }
 
     // res.download(filePath);
@@ -129,6 +133,43 @@ app.get('/download/:seed_code', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+app.get('/download/:seed_code', async (req, res) => {
+  const { seed_code } = req.params;
+
+  try {
+    // 從資料庫檢索檔案路徑
+    const result = await pool.query('SELECT file_path FROM files WHERE seed_code = $1', [seed_code]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Seed Code Not Found' });
+    }
+
+    const filePath = result.rows[0].file_path;
+
+    // 檢查檔案是否存在
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: 'File Not Found' });
+      // return res.status(200).json({ text: filePath });
+    }
+
+    res.download(filePath);
+    // return name of file
+    // res.status(200).json({ file: filePath });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// get all seed code and its all information
+app.get('/all-seed-code', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM files');
+    res.status(200).json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+);
 
 // 啟動伺服器
 const PORT = 5001;
