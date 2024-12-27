@@ -125,7 +125,7 @@ function UploadTab() {
     }
 
     try {
-      const response = await fetch('http://localhost:5001/upload', {
+      const response = await fetch(`/api/upload`, {
         method: 'POST',
         body: formData,
       });
@@ -148,6 +148,7 @@ function UploadTab() {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div>
+        <p className="text-red-400 pb-3">Note: Your data may be deleted after 1 day.</p>
         <label className="block text-sm font-medium text-gray-600 mb-2">Upload Type</label>
         <select
           className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -206,7 +207,7 @@ function UploadTab() {
       <div className="mt-6 text-center text-sm text-gray-600">
         {result === 'success' ? (
           <a
-            href={`${window.location.href}/${seedCode}`}
+            href={`/${seedCode}`}
             className="text-black hover:underline"
           >
             View your file

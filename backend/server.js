@@ -50,7 +50,7 @@ const upload = multer({ storage, fileFilter: (req, file, cb) => {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors({
-  origin: 'http://localhost:3000', // 允許的來源
+  origin: 'http://localhost:80', // 允許的來源
   methods: ['GET', 'POST', 'PUT', 'DELETE'], // 允許的 HTTP 方法
   credentials: true // 如果需要發送 Cookie，設置為 true
 }));
@@ -68,7 +68,7 @@ app.use(cors({
 //   next();
 // }
 // 檔案上傳路由
-app.post('/upload', upload.single('file'), async (req, res) => {
+app.post('/api/upload', upload.single('file'), async (req, res) => {
   const { seed_code, metadata, upload_type, text_message } = req.body;
   for (const key in req.body) {
   }
@@ -105,7 +105,7 @@ app.post('/upload', upload.single('file'), async (req, res) => {
 });
 
 // 檔案下載路由
-app.get('/file-name/:seed_code', async (req, res) => {
+app.get('/api/file-name/:seed_code', async (req, res) => {
   const { seed_code } = req.params;
 
   try {
@@ -131,7 +131,7 @@ app.get('/file-name/:seed_code', async (req, res) => {
   }
 });
 
-app.get('/download/:seed_code', async (req, res) => {
+app.get('/api/download/:seed_code', async (req, res) => {
   const { seed_code } = req.params;
 
   try {
@@ -158,7 +158,7 @@ app.get('/download/:seed_code', async (req, res) => {
 });
 
 // get all seed code and its all information
-app.get('/all-seed-code', async (req, res) => {
+app.get('/api/all-seed-code', async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM files');
     res.status(200).json(result.rows);

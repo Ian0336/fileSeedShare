@@ -3,8 +3,7 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 
 async function getData(seed: string) {
-  console.log('fetching data for seed:', `http://localhost:5001/file-name/${seed}`);
-  const response = await fetch(`http://localhost:5001/file-name/${seed}`);
+  const response = await fetch(`/api/file-name/${seed}`);
   if (!response.ok) {
     throw new Error('Failed to fetch data');
   }
@@ -39,7 +38,7 @@ export default function Home({ params }: { params: { seed: string } }) {
             console.log('file_name:', file_name);
             let index = file_name.indexOf('-');
             file_name = file_name.substring(index + 1);
-            data_content = `<a className="font-medium text-black" href=http://localhost:5001/download/${seed}>${file_name}</a>`;
+            data_content = `<a className="font-medium text-black" href=/api/download/${seed}>${file_name}</a>`;
           } else {
             data_content = `<button className="font-medium text-black bg-transparent border-none cursor-pointer" onclick="navigator.clipboard.writeText('${data.text}').then(() => alert('Copied!')).catch(() => alert('Failed to copy.'))">${data.text}</button>`;
           }
@@ -70,7 +69,7 @@ export default function Home({ params }: { params: { seed: string } }) {
     <div className="flex flex-col items-center min-h-screen px-8 py-12 font-sans mt-7">
       <div className="w-full max-w-lg bg-white shadow-lg rounded-lg p-8 relative">
         <button
-          onClick={() => router.back()}
+          onClick={() => router.push('/')}
           className="absolute top-4 left-4 text-gray-500 hover:text-gray-700 cursor-pointer focus:outline-none"
           aria-label="Go Back"
         >
