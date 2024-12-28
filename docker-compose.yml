@@ -1,10 +1,10 @@
 services:
   nginx:
-    image: nginx:latest
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
     ports:
-      - "80:80" 
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf
+      - "81:80" 
     depends_on:
       - frontend
       - backend
@@ -12,8 +12,8 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    ports:
-      - "3000:3000"
+    expose:
+      - "3000"
     # volumes:
     #   - ./frontend:/app
     #   - /app/node_modules
@@ -27,12 +27,12 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    ports:
-      - "5001:5001"
+    expose:
+      - "5001"
     volumes:
       # - ./backend:/app
       # - /app/node_modules
-      - shared_data:/app/uploads
+      - fileseedshare_shared_data:/app/uploads
     environment:
       - DATABASE_URL=postgres://user:password@db:5432/fileseedshare
     depends_on:
@@ -51,23 +51,25 @@ services:
     depends_on:
       - db
     volumes:
-      - shared_data:/app/uploads
+      - fileseedshare_shared_data:/app/uploads
       - ./log:/var/log
 
 
   db:
-    image: postgres:15
+    build:
+      context: ./db
+      dockerfile: Dockerfile
     container_name: postgres_db
-    ports:
-      - "5432:5432"
+    expose:
+      - "5432"
     environment:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
       POSTGRES_DB: fileseedshare
     volumes:
-      - db_data:/var/lib/postgresql/data
+      - fileseedshare_db_data:/var/lib/postgresql/data
       - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
 
 volumes:
-  db_data:
-  shared_data:
+  fileseedshare_db_data:
+  fileseedshare_shared_data:
