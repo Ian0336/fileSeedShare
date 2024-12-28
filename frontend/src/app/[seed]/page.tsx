@@ -10,7 +10,7 @@ async function getData(seed: string) {
   return response.json();
 }
 
-export default function Home({ params }: { params: { seed: string } }) {
+export default function Home({ params }:any) {
   const router = useRouter();
   const [data, setData] = React.useState<any>(null);
   const [seed, setSeed] = React.useState<string | null>(null);
