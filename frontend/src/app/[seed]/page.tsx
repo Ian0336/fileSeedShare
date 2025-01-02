@@ -10,7 +10,7 @@ async function getData(seed: string) {
   return response.json();
 }
 
-export default function Home({ params }:any) {
+export default function Home({ params }: any) {
   const router = useRouter();
   const [data, setData] = React.useState<any>(null);
   const [seed, setSeed] = React.useState<string | null>(null);
@@ -31,19 +31,23 @@ export default function Home({ params }:any) {
       const _getData = async () => {
         try {
           const data = await getData(seed);
-          let data_type = data['file'] ? 'file' : 'text';
-          let data_content = '';
-          if (data_type === 'file') {
-            let file_name = data.file.split('uploads/')[1];
-            console.log('file_name:', file_name);
-            let index = file_name.indexOf('-');
-            file_name = file_name.substring(index + 1);
-            data_content = `<a className="font-medium text-black" href=/api/download/${seed}>${file_name}</a>`;
-          } else {
-            data_content = `<button className="font-medium text-black bg-transparent border-none cursor-pointer" onclick="navigator.clipboard.writeText('${data.text}').then(() => alert('Copied!')).catch(() => alert('Failed to copy.'))">${data.text}</button>`;
-          }
+          const dataType = data['file'] ? 'file' : 'text';
+          const dataContent = dataType === 'file'
+            ? (
+              <a
+                href={`/api/download/${seed}`}
+                className="text-blue-500 hover:underline break-all"
+              >
+                {data.file.split('uploads/')[1].split('-').slice(1).join('-')}
+              </a>
+            )
+            : (
+              <span className="break-all cursor-pointer" onClick={() => {navigator.clipboard.writeText(data.text).then(() => alert('Copied!')).catch(() => alert('Failed to copy text.'))}}>
+                {data.text}
+              </span>
+            );
 
-          setData({ type: data_type, content: data_content });
+          setData({ type: dataType, content: dataContent });
         } catch (error) {
           console.error(error);
           if (error instanceof Error) {
@@ -61,7 +65,7 @@ export default function Home({ params }:any) {
     const url = window.location.href;
     navigator.clipboard
       .writeText(url)
-      .then(() => setCopySuccess('Copied !'))
+      .then(() => setCopySuccess('Copied!'))
       .catch(() => setCopySuccess('Failed to copy URL.'));
   };
 
@@ -77,9 +81,13 @@ export default function Home({ params }:any) {
         </button>
         <h1 className="text-2xl font-semibold text-gray-800 mb-6 text-center">Seed Data Viewer</h1>
         <div className="space-y-4">
-          <p className="text-gray-700">Your Seed: <span className="font-medium text-black">{seed}</span></p>
+          <p className="text-gray-700">
+            Your Seed: <span className="font-medium text-black">{seed}</span>
+          </p>
           {data ? (
-            <p className="text-gray-700">Data: <span dangerouslySetInnerHTML={{ __html: data.content }} /></p>
+            <p className="text-gray-700">
+              Data: <span className="break-all">{data.content}</span>
+            </p>
           ) : error ? (
             <p className="text-red-500">Error: {error}</p>
           ) : (

@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState('upload');
+  const [tabSwitching, setTabSwitching] = useState(false);
 
   useEffect(() => {
     const storedValue = localStorage.getItem('active_tab');
@@ -13,33 +14,52 @@ export default function Home() {
   }
   , []);
 
-  const handleSetActiveTab = (value:string) => {
-    setActiveTab(value);
-    localStorage.setItem('active_tab', value);
-  }
+  // const handleSetActiveTab = (value:string) => {
+  //   setActiveTab(value);
+  //   localStorage.setItem('active_tab', value);
+  // }
 
-
+  const handleSetActiveTab = (value: string) => {
+    if (value !== activeTab) {
+      setTabSwitching(true);
+      setTimeout(() => {
+        setActiveTab(value);
+        localStorage.setItem('active_tab', value);
+        setTabSwitching(false);
+      }, 200); // 動畫持續時間
+    }
+  };
 
   return (
     <div className="flex flex-col items-center min-h-screen px-8 py-12 font-sans mt-7">
       <div className="w-full max-w-lg bg-white shadow-lg rounded-lg p-8">
         <div className="flex justify-around mb-6">
           <button
-            className={`w-1/2 py-2 font-medium ${activeTab === 'upload' ? 'text-white bg-gray-500' : 'text-gray-500 bg-gray-200'} rounded-l-lg focus:outline-none`}
+            className={`w-1/2 py-2 font-medium ${
+              activeTab === 'upload' ? 'text-white bg-gray-500' : 'text-gray-500 bg-gray-200'
+            } rounded-l-lg focus:outline-none  transition-all duration-300`}
             onClick={() => handleSetActiveTab('upload')}
           >
             Upload
           </button>
           <button
-            className={`w-1/2 py-2 font-medium ${activeTab === 'search' ? 'text-white bg-gray-500' : 'text-gray-500 bg-gray-200'} rounded-r-lg focus:outline-none`}
+            className={`w-1/2 py-2 font-medium ${
+              activeTab === 'search' ? 'text-white bg-gray-500' : 'text-gray-500 bg-gray-200'
+            } rounded-r-lg focus:outline-none  transition-all duration-300`}
             onClick={() => handleSetActiveTab('search')}
           >
             Search
           </button>
         </div>
 
-        {activeTab === 'upload' && <UploadTab />}
-        {activeTab === 'search' && <SearchTab />}
+        <div
+          className={`tab-content transition-opacity duration-300 ${
+            tabSwitching ? 'opacity-0' : 'opacity-100'
+          }`}
+        >
+          {activeTab === 'upload' && <UploadTab />}
+          {activeTab === 'search' && <SearchTab />}
+        </div>
       </div>
     </div>
   );
@@ -129,7 +149,13 @@ function UploadTab() {
         method: 'POST',
         body: formData,
       });
-
+      console.log(response);
+      // check if the response file is too large or not
+      if (response.status === 413) {
+        setResult('File size is too large. Max file size is 10MB');
+        return
+      }
+      
       const result = await response.json();
 
       if (result.error) {
@@ -138,8 +164,9 @@ function UploadTab() {
         setResult('success');
         router.push(`/${seedCode}`);
       }
-    } catch (error) {
-      setResult('Upload failed');
+    } catch (error: any) {
+      console.log(error);
+      setResult('Upload failed: ' + error.statusText);
     } finally {
       setIsLoading(false);
     }
@@ -154,6 +181,7 @@ function UploadTab() {
           className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
           value={uploadType}
           onChange={(e) => handleSetUploadType(e.target.value)}
+          disabled={isLoading}
         >
           <option value="file">File</option>
           <option value="text">Text</option>
@@ -168,6 +196,7 @@ function UploadTab() {
             onChange={handleFileChange}
             className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             required={uploadType === 'file'}
+            disabled={isLoading}
           />
         </div>
       )}
@@ -181,6 +210,7 @@ function UploadTab() {
             className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             rows={4}
             required={uploadType === 'text'}
+            disabled={isLoading}
           ></textarea>
         </div>
       )}
@@ -193,6 +223,7 @@ function UploadTab() {
           onChange={(e) => setSeedCode(e.target.value)}
           className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
           required
+          disabled={isLoading}
         />
       </div>
 

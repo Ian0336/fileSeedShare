@@ -16,4 +16,5 @@ COPY . .
 EXPOSE 5001
 
 # 啟動後端伺服器
+# CMD ["npm", "run", "dev"]
 CMD ["npm", "run", "start"]

@@ -29,44 +29,28 @@ const storage = multer.diskStorage({
   },
 });
 
-const upload = multer({ storage, fileFilter: (req, file, cb) => {
-  // req.body.upload_type === 'file' ? cb(null, true) : cb(null, false);
-  if (req.body.upload_type === 'file') {
-    cb(null, true);
-  } else {
-    cb(null, false);
+const upload = multer({ 
+  storage, 
+  limits: { fileSize: 10 * 1024 * 1024 }, // 限制文件大小為 10MB
+  fileFilter: (req, file, cb) => {
+    if (req.body.upload_type === 'file') {
+      cb(null, true);
+    } else {
+      cb(null, false);
+    }
   }
-
-  // set file size limit
-  if (file.size > 1024 * 1024) {
-    cb(null, false);
-  } else {
-    cb(null, true);
-  } 
-}
 });
 
 // 中間件設定
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cors({
   origin: 'http://localhost:80', // 允許的來源
   methods: ['GET', 'POST', 'PUT', 'DELETE'], // 允許的 HTTP 方法
   credentials: true // 如果需要發送 Cookie，設置為 true
 }));
 
-// async (req, res, next) => {
-//   const { upload_type } = req.body;
-//   for (const key in req.body) {
-//     console.log(key, req.body[key]);
-//   }
-//   console.log('upload_type:', req.body.upload_type);
-//   if (upload_type === 'file') {
-//     return upload.single('file')(req, res, next);
-//   }
 
-//   next();
-// }
 // 檔案上傳路由
 app.post('/api/upload', upload.single('file'), async (req, res) => {
   const { seed_code, metadata, upload_type, text_message } = req.body;
@@ -158,15 +142,15 @@ app.get('/api/download/:seed_code', async (req, res) => {
 });
 
 // get all seed code and its all information
-app.get('/api/all-seed-code', async (req, res) => {
-  try {
-    const result = await pool.query('SELECT * FROM files');
-    res.status(200).json(result.rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-}
-);
+// app.get('/api/all-seed-code', async (req, res) => {
+//   try {
+//     const result = await pool.query('SELECT * FROM files');
+//     res.status(200).json(result.rows);
+//   } catch (err) {
+//     res.status(500).json({ error: err.message });
+//   }
+// }
+// );
 
 // 啟動伺服器
 const PORT = 5001;
