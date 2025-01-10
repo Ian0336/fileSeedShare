@@ -42,7 +42,18 @@ export default function Home({ params }: any) {
               </a>
             )
             : (
-              <span className="break-all cursor-pointer" onClick={() => {navigator.clipboard.writeText(data.text).then(() => alert('Copied!')).catch(() => alert('Failed to copy text.'))}}>
+              <span className="break-all cursor-pointer" onClick={() => {
+                navigator.clipboard.writeText(data.text)
+                  .then(() => {
+                    alert('Copied!');
+                    if (data.text.toLowerCase().startsWith('https://')) {
+                      if (window.confirm(`Open ${data.text} in new tab?`)) {
+                        window.open(data.text, '_blank');
+                      }
+                    }
+                  })
+                  .catch(() => alert('Failed to copy text.'))
+              }}>
                 {data.text}
               </span>
             );

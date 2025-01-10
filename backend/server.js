@@ -41,6 +41,46 @@ const upload = multer({
   }
 });
 
+// 設定 rate limit
+const rateLimit = new Map();
+const MAX_REQUESTS = 20; // 最大请求次数
+const TIME_WINDOW = 60 * 1000; // 时间窗口（1分钟）
+// 添加限制请求的中间件
+function rateLimiter(req, res, next) {
+  const ip = req.ip || req.connection.remoteAddress;
+  const now = Date.now();
+  
+  if (!rateLimit.has(ip)) {
+    rateLimit.set(ip, {
+      count: 1,
+      firstRequest: now
+    });
+    next();
+    return;
+  }
+
+  const userLimit = rateLimit.get(ip);
+  
+  // 检查是否在时间窗口内
+  if (now - userLimit.firstRequest > TIME_WINDOW) {
+    // 重置计数器
+    userLimit.count = 1;
+    userLimit.firstRequest = now;
+    next();
+    return;
+  }
+
+  // 检查请求次数
+  if (userLimit.count >= MAX_REQUESTS) {
+    return res.status(429).json({ 
+      error: 'Too many requests. Please try again later.' 
+    });
+  }
+
+  userLimit.count++;
+  next();
+}
+
 // 中間件設定
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -49,7 +89,7 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE'], // 允許的 HTTP 方法
   credentials: true // 如果需要發送 Cookie，設置為 true
 }));
-
+app.use('/api/', rateLimiter);
 
 // 檔案上傳路由
 app.post('/api/upload', upload.single('file'), async (req, res) => {
@@ -89,7 +129,7 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
 });
 
 // 檔案下載路由
-app.get('/api/file-name/:seed_code', async (req, res) => {
+app.get('/api/file-name/:seed_code', rateLimiter, async (req, res) => {
   const { seed_code } = req.params;
 
   try {
@@ -151,6 +191,16 @@ app.get('/api/download/:seed_code', async (req, res) => {
 //   }
 // }
 // );
+
+// 定期清理过期的 IP 记录
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, data] of rateLimit.entries()) {
+    if (now - data.firstRequest > TIME_WINDOW) {
+      rateLimit.delete(ip);
+    }
+  }
+}, TIME_WINDOW);
 
 // 啟動伺服器
 const PORT = 5001;
