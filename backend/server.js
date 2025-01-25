@@ -129,8 +129,11 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
 });
 
 // 檔案下載路由
-app.get('/api/file-name/:seed_code', rateLimiter, async (req, res) => {
-  const { seed_code } = req.params;
+app.post('/api/file-name', rateLimiter, async (req, res) => {
+  const { seed_code } = req.body;  
+  if (!seed_code) {
+    return res.status(400).json({ error: 'Seed code is required' });
+  }
 
   try {
     // 從資料庫檢索檔案路徑

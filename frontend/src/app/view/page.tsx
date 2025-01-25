@@ -17,7 +17,7 @@ async function getData(seed: string) {
   return response.json();
 }
 
-export default function Home({ params }: any) {
+export default function ViewPage() {
   const router = useRouter();
   const [data, setData] = React.useState<any>(null);
   const [seed, setSeed] = React.useState<string | null>(null);
@@ -25,13 +25,14 @@ export default function Home({ params }: any) {
   const [copySuccess, setCopySuccess] = React.useState('');
 
   React.useEffect(() => {
-    const resolveParams = async () => {
-      const resolvedParams = await params;
-      setSeed(decodeURIComponent(resolvedParams.seed));
-    };
-
-    resolveParams();
-  }, [params]);
+    // 从 localStorage 获取 seed
+    const storedSeed = localStorage.getItem('current_seed');
+    if (!storedSeed) {
+      router.push('/'); // 如果没有 seed，返回首页
+      return;
+    }
+    setSeed(storedSeed);
+  }, [router]);
 
   React.useEffect(() => {
     if (seed) {
@@ -121,4 +122,4 @@ export default function Home({ params }: any) {
       </div>
     </div>
   );
-}
+} 
