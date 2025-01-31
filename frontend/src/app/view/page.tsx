@@ -80,12 +80,18 @@ export default function ViewPage() {
     }
   }, [seed]);
 
-  const copyToClipboard = () => {
-    const url = window.location.href;
-    navigator.clipboard
-      .writeText(url)
-      .then(() => setCopySuccess('Copied!'))
-      .catch(() => setCopySuccess('Failed to copy URL.'));
+  const handleAction = () => {
+    if (!data) return;
+    
+    if (data.type === 'text') {
+      navigator.clipboard.writeText(data.content.props.children)
+        .then(() => setCopySuccess('Text copied!'))
+        .catch(() => setCopySuccess('Failed to copy text.'));
+    } else if (data.type === 'file') {
+      // 觸發文件下載
+      window.location.href = `/api/download/${seed}`;
+      setCopySuccess('Downloaded!');
+    }
   };
 
   return (
@@ -112,12 +118,14 @@ export default function ViewPage() {
           ) : (
             <p className="text-gray-500">Loading...</p>
           )}
-          <button
-            onClick={copyToClipboard}
-            className="w-full py-2 rounded-lg font-medium text-black bg-gray-300 hover:bg-gray-400 transition duration-200"
-          >
-            {copySuccess || 'Copy URL'}
-          </button>
+          {data && (
+            <button
+              onClick={handleAction}
+              className="w-full py-2 rounded-lg font-medium text-black bg-gray-300 hover:bg-gray-400 transition duration-200"
+            >
+              {copySuccess || (data.type === 'text' ? 'Copy Text' : 'Download File')}
+            </button>
+          )}
         </div>
       </div>
     </div>

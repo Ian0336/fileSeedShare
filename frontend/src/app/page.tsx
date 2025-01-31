@@ -71,7 +71,8 @@ function SearchTab() {
 
   const handleSearch = () => {
     if (seedCode.trim()) {
-      router.push(`/${seedCode}`);
+      localStorage.setItem('current_seed', seedCode.trim());
+      router.push('/view');
     }
   };
   return (
@@ -149,8 +150,7 @@ function UploadTab() {
         method: 'POST',
         body: formData,
       });
-      console.log(response);
-      // check if the response file is too large or not
+      
       if (response.status === 413) {
         setResult('File size is too large. Max file size is 10MB');
         return
@@ -162,7 +162,8 @@ function UploadTab() {
         setResult(`Error: ${result.error}`);
       } else {
         setResult('success');
-        router.push(`/${seedCode}`);
+        localStorage.setItem('current_seed', seedCode);
+        router.push('/view');
       }
     } catch (error: any) {
       console.log(error);
@@ -237,12 +238,7 @@ function UploadTab() {
 
       <div className="mt-6 text-center text-sm text-gray-600">
         {result === 'success' ? (
-          <a
-            href={`/${seedCode}`}
-            className="text-black hover:underline"
-          >
-            View your file
-          </a>
+          <span className="text-green-600">Upload successful!</span>
         ) : (
           <span>{result}</span>
         )}
