@@ -183,6 +183,52 @@ app.get('/api/download/:seed_code', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+// Add a new endpoint to server.js to serve file content
+app.get('/api/view-file/:seed_code', async (req, res) => {
+  const { seed_code } = req.params;
+
+  try {
+    // Retrieve file info from database
+    const result = await pool.query('SELECT file_path FROM files WHERE seed_code = $1', [seed_code]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Seed Code Not Found' });
+    }
+
+    const filePath = result.rows[0].file_path;
+
+    // Check if it's a text message (not a file path)
+    if (!fs.existsSync(filePath)) {
+      return res.status(200).json({ text: filePath });
+    }
+
+    // Get file extension to determine content type
+    const fileExtension = path.extname(filePath).toLowerCase();
+    
+    // For images, PDFs, and binary files - send the file directly with proper content type
+    if (['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.pdf'].includes(fileExtension)) {
+      return res.sendFile(path.resolve(filePath));
+    } 
+    
+    // For text files, read and send as JSON
+    if (['.txt', '.md', '.js', '.html', '.css', '.json', '.xml'].includes(fileExtension)) {
+      const textContent = fs.readFileSync(filePath, 'utf8');
+      return res.status(200).json({ 
+        fileContent: textContent,
+        fileName: filePath.split('uploads/')[1].split('-').slice(1).join('-'),
+        fileType: 'text'
+      });
+    }
+    
+    // For other file types, just return metadata and let client download
+    return res.status(200).json({
+      fileName: filePath.split('uploads/')[1].split('-').slice(1).join('-'),
+      fileType: fileExtension.substring(1),
+      downloadUrl: `/api/download/${seed_code}`
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // get all seed code and its all information
 // app.get('/api/all-seed-code', async (req, res) => {
@@ -204,6 +250,8 @@ setInterval(() => {
     }
   }
 }, TIME_WINDOW);
+
+
 
 // 啟動伺服器
 const PORT = 5001;
