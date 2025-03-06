@@ -43,7 +43,7 @@ const upload = multer({
 
 // 設定 rate limit
 const rateLimit = new Map();
-const MAX_REQUESTS = 20; // 最大请求次数
+const MAX_REQUESTS = 40; // 最大请求次数
 const TIME_WINDOW = 60 * 1000; // 时间窗口（1分钟）
 // 添加限制请求的中间件
 function rateLimiter(req, res, next) {
@@ -184,7 +184,7 @@ app.get('/api/download/:seed_code', async (req, res) => {
   }
 });
 // Add a new endpoint to server.js to serve file content
-app.get('/api/view-file/:seed_code', async (req, res) => {
+app.get('/api/view-file/:seed_code', rateLimiter, async (req, res) => {
   const { seed_code } = req.params;
 
   try {
@@ -203,9 +203,8 @@ app.get('/api/view-file/:seed_code', async (req, res) => {
 
     // Get file extension to determine content type
     const fileExtension = path.extname(filePath).toLowerCase();
-    
     // For images, PDFs, and binary files - send the file directly with proper content type
-    if (['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.pdf'].includes(fileExtension)) {
+    if (['.jpg', '.jpeg', '.png', '.ico', '.gif', '.bmp', '.pdf', '.mp4', '.webm', '.mov'].includes(fileExtension)) {
       return res.sendFile(path.resolve(filePath));
     } 
     

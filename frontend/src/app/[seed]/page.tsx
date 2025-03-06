@@ -1,6 +1,7 @@
 'use client';
 import React from 'react';
 import { useRouter } from 'next/navigation';
+import FileViewer from '../view/_components/FileViewer';
 
 async function getData(seed: string) {
   const response = await fetch(`/api/file-name`, {
@@ -88,37 +89,58 @@ export default function Home({ params }: any) {
   };
 
   return (
-    <div className="flex flex-col items-center min-h-screen px-8 py-12 font-sans mt-7">
-      <div className="w-full max-w-lg bg-white shadow-lg rounded-lg p-8 relative">
+    <div className="flex flex-col items-center min-h-screen px-4 sm:px-8 py-6 sm:py-12 font-sans mt-7">
+      <div className="w-full max-w-2xl bg-white shadow-lg rounded-lg p-6 sm:p-8 relative">
         <button
           onClick={() => router.push('/')}
-          className="absolute top-4 left-4 text-gray-500 hover:text-gray-700 cursor-pointer focus:outline-none"
+          className="absolute top-4 left-4 text-gray-500 hover:text-gray-700 cursor-pointer focus:outline-none transition-colors"
           aria-label="Go Back"
         >
           ← Back
         </button>
         <h1 className="text-2xl font-semibold text-gray-800 mb-6 text-center">Seed Data Viewer</h1>
         <div className="space-y-4">
-          <p className="text-gray-700">
-            Your Seed: <span className="font-medium text-black">{seed}</span>
-          </p>
-          {data ? (
-            <p className="text-gray-700">
-              Data: <span className="break-all">{data.content}</span>
+          <div className="flex items-center bg-gray-50 p-3 rounded-lg border border-gray-200">
+            <p className="text-gray-700 mr-2">
+              Your Seed:
             </p>
+            <span className="font-medium text-black bg-gray-100 px-2 py-1 rounded">{seed}</span>
+          </div>
+          
+          {data ? (
+            <div className="bg-white p-4 rounded-lg border border-gray-200">
+              <p className="text-gray-700 mb-2">
+                Data:
+              </p>
+              <div className="break-all">
+                {data.content}
+              </div>
+            </div>
           ) : error ? (
-            <p className="text-red-500">Error: {error}</p>
+            <div className="bg-red-50 p-4 rounded-lg border border-red-200">
+              <p className="text-red-500">Error: {error}</p>
+            </div>
           ) : (
-            <p className="text-gray-500">Loading...</p>
+            <div className="animate-pulse bg-gray-100 p-4 rounded-lg">
+              <p className="text-gray-500">Loading...</p>
+            </div>
           )}
+          
           <button
             onClick={copyToClipboard}
-            className="w-full py-2 rounded-lg font-medium text-black bg-gray-300 hover:bg-gray-400 transition duration-200"
+            className="w-full py-3 rounded-lg font-medium text-black bg-gray-200 hover:bg-gray-300 transition-colors duration-200 flex items-center justify-center"
           >
-            {copySuccess || 'Copy URL'}
+            <span>{copySuccess || 'Copy URL'}</span>
           </button>
         </div>
       </div>
+      
+      {data && data.viewData && (
+        <div className="w-full max-w-2xl mt-6">
+          <h2 className="text-lg font-medium text-gray-700 mb-3">File Preview</h2>
+          <FileViewer fileData={data.viewData} seed={seed || ''} />
+        </div>
+      )}
     </div>
   );
 }
