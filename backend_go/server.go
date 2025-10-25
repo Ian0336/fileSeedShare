@@ -115,6 +115,26 @@ func main() {
 	}
 	defer db.Close()
 
+	// check if DB is connected
+	if err := db.Ping(); err != nil {
+		log.Fatalf("failed to ping DB: %v", err)
+	}
+
+	// check if table exists
+	if _, err := db.Exec(`
+		CREATE TABLE IF NOT EXISTS public.files (
+			seed_code   TEXT PRIMARY KEY,
+			file_path   TEXT NOT NULL,
+			metadata    JSONB NOT NULL DEFAULT '{}'::jsonb,
+			expire_time TIMESTAMPTZ NOT NULL DEFAULT (now() + interval '1 days')
+		);
+	`); err != nil {
+		log.Fatalf("failed to create table: %v", err)
+	}
+
+	// delete expired records
+	go deleteExpiredRecords()
+
 	// ensure upload folder exists
 	if err := os.MkdirAll(uploadFolder, 0755); err != nil {
 		log.Fatalf("failed to create upload folder: %v", err)
@@ -151,6 +171,14 @@ func rateLimitMiddleware(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// a cron job to delete expired records
+func deleteExpiredRecords() {
+	for {
+		time.Sleep(time.Hour * 24)
+		db.Exec("DELETE FROM files WHERE expire_time < NOW()")
+	}
 }
 
 // handleUpload handles POST /api/upload
@@ -231,9 +259,10 @@ func handleUpload(w http.ResponseWriter, r *http.Request) {
 	}
 	// insert into DB
 	_, err = db.Exec(
-		`INSERT INTO files(seed_code, file_path, metadata)
-         VALUES($1, $2, $3)`,
+		`INSERT INTO files(seed_code, file_path, metadata, expire_time)
+         VALUES($1, $2, $3, $4)`,
 		seedCode, storedPath, metadataStr,
+		time.Now().Add(time.Hour*24*1), // 1 days
 	)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
