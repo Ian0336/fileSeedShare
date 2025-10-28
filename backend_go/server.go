@@ -26,7 +26,7 @@ const (
 	maxRequests    = 40
 	rateWindow     = time.Minute
 	uploadFolder   = "uploads"
-	serverPort     = 5001
+	serverPort     = 30601
 	allowedOrigin  = "http://localhost:80"
 	downloadPrefix = "/api/download/"
 )
@@ -175,9 +175,50 @@ func rateLimitMiddleware(next http.Handler) http.Handler {
 
 // a cron job to delete expired records
 func deleteExpiredRecords() {
+	ticker := time.NewTicker(24 * time.Hour)
+	defer ticker.Stop()
+
+	cleanup := func() {
+		rows, err := db.Query(`
+            SELECT seed_code, file_path 
+            FROM files 
+            WHERE expire_time < NOW()
+        `)
+		if err != nil {
+			log.Printf("query expired records: %v", err)
+			return
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var seedCode, filePath string
+			if err := rows.Scan(&seedCode, &filePath); err != nil {
+				log.Printf("scan expired record: %v", err)
+				continue
+			}
+
+			if _, err := os.Stat(filePath); err == nil {
+				if err := os.Remove(filePath); err != nil {
+					log.Printf("remove file %q failed: %v", filePath, err)
+				}
+			} else if !os.IsNotExist(err) {
+				log.Printf("stat file %q error: %v", filePath, err)
+			}
+
+			if _, err := db.Exec(`DELETE FROM files WHERE seed_code = $1`, seedCode); err != nil {
+				log.Printf("delete db record %q failed: %v", seedCode, err)
+				continue
+			}
+			log.Printf("deleted expired record: %s", seedCode)
+		}
+		if err := rows.Err(); err != nil {
+			log.Printf("rows iteration error: %v", err)
+		}
+	}
+
+	cleanup()
 	for {
-		time.Sleep(time.Hour * 24)
-		db.Exec("DELETE FROM files WHERE expire_time < NOW()")
+		cleanup()
 	}
 }
 
