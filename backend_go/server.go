@@ -217,7 +217,7 @@ func deleteExpiredRecords() {
 	}
 
 	cleanup()
-	for {
+	for range ticker.C {
 		cleanup()
 	}
 }
