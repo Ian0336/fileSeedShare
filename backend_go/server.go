@@ -124,7 +124,8 @@ func main() {
 	if _, err := db.Exec(`
 		CREATE TABLE IF NOT EXISTS public.files (
 			seed_code   TEXT PRIMARY KEY,
-			file_path   TEXT NOT NULL,
+			content     TEXT NOT NULL,
+			type        TEXT NOT NULL DEFAULT 'file',
 			metadata    JSONB NOT NULL DEFAULT '{}'::jsonb,
 			expire_time TIMESTAMPTZ NOT NULL DEFAULT (now() + interval '1 days')
 		);
@@ -180,7 +181,7 @@ func deleteExpiredRecords() {
 
 	cleanup := func() {
 		rows, err := db.Query(`
-            SELECT seed_code, file_path 
+            SELECT seed_code, content, type 
             FROM files 
             WHERE expire_time < NOW()
         `)
@@ -191,18 +192,20 @@ func deleteExpiredRecords() {
 		defer rows.Close()
 
 		for rows.Next() {
-			var seedCode, filePath string
-			if err := rows.Scan(&seedCode, &filePath); err != nil {
+			var seedCode, content, contentType string
+			if err := rows.Scan(&seedCode, &content, &contentType); err != nil {
 				log.Printf("scan expired record: %v", err)
 				continue
 			}
 
-			if _, err := os.Stat(filePath); err == nil {
-				if err := os.Remove(filePath); err != nil {
-					log.Printf("remove file %q failed: %v", filePath, err)
+			if contentType == "file" {
+				if _, err := os.Stat(content); err == nil {
+					if err := os.Remove(content); err != nil {
+						log.Printf("remove file %q failed: %v", content, err)
+					}
+				} else if !os.IsNotExist(err) {
+					log.Printf("stat file %q error: %v", content, err)
 				}
-			} else if !os.IsNotExist(err) {
-				log.Printf("stat file %q error: %v", filePath, err)
 			}
 
 			if _, err := db.Exec(`DELETE FROM files WHERE seed_code = $1`, seedCode); err != nil {
@@ -300,9 +303,9 @@ func handleUpload(w http.ResponseWriter, r *http.Request) {
 	}
 	// insert into DB
 	_, err = db.Exec(
-		`INSERT INTO files(seed_code, file_path, metadata, expire_time)
-         VALUES($1, $2, $3, $4)`,
-		seedCode, storedPath, metadataStr,
+		`INSERT INTO files(seed_code, content, type, metadata, expire_time)
+         VALUES($1, $2, $3, $4, $5)`,
+		seedCode, storedPath, uploadType, metadataStr,
 		time.Now().Add(time.Hour*24*1), // 1 days
 	)
 	if err != nil {
@@ -329,11 +332,11 @@ func handleFileName(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "seed_code is required", http.StatusBadRequest)
 		return
 	}
-	var filePath string
+	var content, contentType string
 	err := db.QueryRow(
-		`SELECT file_path FROM files WHERE seed_code=$1`,
+		`SELECT content, type FROM files WHERE seed_code=$1`,
 		req.SeedCode,
-	).Scan(&filePath)
+	).Scan(&content, &contentType)
 	if err == sql.ErrNoRows {
 		http.Error(w, "Seed Code Not Found", http.StatusNotFound)
 		return
@@ -343,23 +346,22 @@ func handleFileName(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// if file doesn't exist on disk, echo the stored text
-	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		writeJSON(w, http.StatusOK, map[string]string{"text": filePath})
+	if contentType == "text" {
+		writeJSON(w, http.StatusOK, map[string]string{"text": content})
 		return
 	}
 	// otherwise return the path
-	writeJSON(w, http.StatusOK, map[string]string{"file": filePath})
+	writeJSON(w, http.StatusOK, map[string]string{"file": content})
 }
 
 // handleDownload serves the raw file at /api/download/{seed_code}
 func handleDownload(w http.ResponseWriter, r *http.Request) {
 	seed := mux.Vars(r)["seed_code"]
-	var filePath string
+	var content, contentType string
 	err := db.QueryRow(
-		`SELECT file_path FROM files WHERE seed_code=$1`,
+		`SELECT content, type FROM files WHERE seed_code=$1`,
 		seed,
-	).Scan(&filePath)
+	).Scan(&content, &contentType)
 	if err == sql.ErrNoRows {
 		http.Error(w, "Seed Code Not Found", http.StatusNotFound)
 		return
@@ -368,20 +370,29 @@ func handleDownload(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+
+	if contentType == "text" {
+		// serve text content as a file
+		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s.txt", seed))
+		w.Header().Set("Content-Type", "text/plain")
+		http.ServeContent(w, r, seed+".txt", time.Now(), strings.NewReader(content))
+		return
+	}
+
+	if _, err := os.Stat(content); os.IsNotExist(err) {
 		http.Error(w, "File Not Found", http.StatusNotFound)
 		return
 	}
-	http.ServeFile(w, r, filePath)
+	http.ServeFile(w, r, content)
 }
 
 // handleViewFile handles GET /api/view-file/{seed_code}
 func handleViewFile(w http.ResponseWriter, r *http.Request) {
 	seed := mux.Vars(r)["seed_code"]
-	var filePath string
+	var content, contentType string
 	if err := db.QueryRow(
-		`SELECT file_path FROM files WHERE seed_code=$1`, seed,
-	).Scan(&filePath); err == sql.ErrNoRows {
+		`SELECT content, type FROM files WHERE seed_code=$1`, seed,
+	).Scan(&content, &contentType); err == sql.ErrNoRows {
 		http.Error(w, "Seed Code Not Found", http.StatusNotFound)
 		return
 	} else if err != nil {
@@ -390,12 +401,16 @@ func handleViewFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// if path is actually text
-	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		writeJSON(w, http.StatusOK, map[string]string{"text": filePath})
+	if contentType == "text" {
+		writeJSON(w, http.StatusOK, map[string]string{
+			"fileContent": content,
+			"fileName":    seed,
+			"fileType":    "text",
+		})
 		return
 	}
 
-	ext := strings.ToLower(filepath.Ext(filePath))
+	ext := strings.ToLower(filepath.Ext(content))
 	textExts := map[string]bool{
 		".txt": true, ".md": true, ".js": true,
 		".html": true, ".css": true, ".json": true, ".xml": true,
@@ -409,16 +424,16 @@ func handleViewFile(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case binaryExts[ext]:
 		// let browser handle it
-		http.ServeFile(w, r, filePath)
+		http.ServeFile(w, r, content)
 
 	case textExts[ext]:
-		data, err := os.ReadFile(filePath)
+		data, err := os.ReadFile(content)
 		if err != nil {
 			http.Error(w, "Unable to read file", http.StatusInternalServerError)
 			return
 		}
 		// extract original filename
-		_, fname := filepath.Split(filePath)
+		_, fname := filepath.Split(content)
 		// remove timestamp prefix
 		parts := strings.SplitN(fname, "-", 2)
 		realName := fname
@@ -434,7 +449,7 @@ func handleViewFile(w http.ResponseWriter, r *http.Request) {
 
 	default:
 		// unknown type → metadata + download link
-		_, fname := filepath.Split(filePath)
+		_, fname := filepath.Split(content)
 		parts := strings.SplitN(fname, "-", 2)
 		realName := fname
 		if len(parts) == 2 {
