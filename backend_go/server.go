@@ -383,6 +383,17 @@ func handleDownload(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "File Not Found", http.StatusNotFound)
 		return
 	}
+
+	// extract original filename from storage path (e.g. "uploads/123456-image.png" -> "image.png")
+	_, fname := filepath.Split(content)
+	parts := strings.SplitN(fname, "-", 2)
+	realName := fname
+	if len(parts) == 2 {
+		realName = parts[1]
+	}
+
+	// quote the filename to handle spaces/special chars safely
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", realName))
 	http.ServeFile(w, r, content)
 }
 
